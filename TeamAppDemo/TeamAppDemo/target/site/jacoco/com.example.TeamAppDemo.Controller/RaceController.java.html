@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RaceController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">race-demo</a> &gt; <a href="index.source.html" class="el_package">com.example.TeamAppDemo.Controller</a> &gt; <span class="el_source">RaceController.java</span></div><h1>RaceController.java</h1><pre class="source lang-java linenums">
+package com.example.TeamAppDemo.Controller;
+
+import com.example.TeamAppDemo.DTO.RaceDtos;
+import com.example.TeamAppDemo.Entity.Race;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.*;
+import com.example.TeamAppDemo.Service.RaceService;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/races&quot;)
+@CrossOrigin(origins = &quot;http://localhost:3000&quot;)
+@Tag(name = &quot;Races&quot;)
+public class RaceController {
+
+ private final RaceService raceService;
+
+<span class="fc" id="L23">    public RaceController(RaceService raceService) {</span>
+<span class="fc" id="L24">         this.raceService = raceService; }</span>
+
+    @Operation(summary=&quot;Create race&quot;)
+    @PostMapping
+    public RaceDtos.RaceResponse create(@Valid @RequestBody RaceDtos.RaceCreateRequest req) {
+<span class="fc" id="L29">        return toResponse(raceService.create(req));</span>
+    }
+
+    @Operation(summary=&quot;Update race&quot;)
+    @PutMapping(&quot;/{id}&quot;)
+    public RaceDtos.RaceResponse update(@PathVariable Long id, @Valid @RequestBody RaceDtos.RaceUpdateRequest req) {
+<span class="fc" id="L35">        return toResponse(raceService.update(id, req));</span>
+    }
+
+    @Operation(summary=&quot;Get race&quot;)
+    @GetMapping(&quot;/{id}&quot;)
+    public RaceDtos.RaceResponse get(@PathVariable Long id) {
+<span class="fc" id="L41">        return toResponse(raceService.get(id));</span>
+    }
+
+    @Operation(summary=&quot;List races&quot;)
+    @GetMapping
+    public List&lt;RaceDtos.RaceResponse&gt; list() {
+<span class="fc" id="L47">        return raceService.list().stream().map(this::toResponse).toList();</span>
+    }
+
+    @Operation(summary=&quot;Delete race (blocked if any driver registered)&quot;)
+    @DeleteMapping(&quot;/{id}&quot;)
+<span class="fc" id="L52">    public void delete(@PathVariable Long id) { raceService.delete(id); }</span>
+
+    @Operation(summary=&quot;Register driver to race&quot;)
+    @PostMapping(&quot;/{raceId}/registrations/{driverId}&quot;)
+    public void register(@PathVariable Long raceId, @PathVariable Long driverId) {
+<span class="fc" id="L57">        raceService.registerDriver(raceId, driverId);</span>
+<span class="fc" id="L58">    }</span>
+
+    @Operation(summary=&quot;Unregister driver from race&quot;)
+    @DeleteMapping(&quot;/{raceId}/registrations/{driverId}&quot;)
+    public void unregister(@PathVariable Long raceId, @PathVariable Long driverId) {
+<span class="fc" id="L63">        raceService.unregisterDriver(raceId, driverId);</span>
+<span class="fc" id="L64">    }</span>
+
+    private RaceDtos.RaceResponse toResponse(Race r) {
+<span class="fc" id="L67">        RaceDtos.RaceResponse res = new RaceDtos.RaceResponse();</span>
+<span class="fc" id="L68">        res.id = r.getId();</span>
+<span class="fc" id="L69">        res.trackName = r.getTrackName();</span>
+<span class="fc" id="L70">        res.city = r.getCity();</span>
+<span class="fc" id="L71">        res.country = r.getCountry();</span>
+<span class="fc" id="L72">        res.raceDate = r.getRaceDate();</span>
+<span class="fc" id="L73">        res.registrationClosureDate = r.getRegistrationClosureDate();</span>
+<span class="pc" id="L74">        res.registeredDriverIds = r.getDriverRaces().stream().map(dr -&gt; dr.getDriver().getId()).toList();</span>
+<span class="fc" id="L75">        return res;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

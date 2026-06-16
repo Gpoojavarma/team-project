@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">race-demo</a> &gt; <a href="index.source.html" class="el_package">com.example.TeamAppDemo.Exception</a> &gt; <span class="el_source">ApiExceptionHandler.java</span></div><h1>ApiExceptionHandler.java</h1><pre class="source lang-java linenums">
+package com.example.TeamAppDemo.Exception;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import jakarta.validation.ConstraintViolationException;
+
+@RestControllerAdvice // ✅ always serialize response bodies as JSON
+<span class="fc" id="L19">public class ApiExceptionHandler {</span>
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity&lt;?&gt; notFound(ResourceNotFoundException ex) {
+<span class="fc" id="L23">        return error(HttpStatus.NOT_FOUND, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(BusinessRuleViolationException.class)
+    public ResponseEntity&lt;?&gt; businessRule(BusinessRuleViolationException ex) {
+<span class="fc" id="L28">        return error(HttpStatus.BAD_REQUEST, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity&lt;?&gt; illegalArg(IllegalArgumentException ex) {
+<span class="fc" id="L33">        return error(HttpStatus.BAD_REQUEST, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(NumberFormatException.class)
+    public ResponseEntity&lt;?&gt; numberFormat(NumberFormatException ex) {
+<span class="fc" id="L38">        return error(HttpStatus.BAD_REQUEST, &quot;Invalid numeric id: &quot; + ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity&lt;?&gt; unreadable(HttpMessageNotReadableException ex) {
+<span class="fc" id="L43">        return error(HttpStatus.BAD_REQUEST, &quot;Malformed JSON or wrong types&quot;);</span>
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;?&gt; validation(MethodArgumentNotValidException ex) {
+<span class="fc" id="L48">        List&lt;String&gt; details = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L49">                .map(f -&gt; f.getField() + &quot;: &quot; + f.getDefaultMessage())</span>
+<span class="fc" id="L50">                .toList();</span>
+<span class="fc" id="L51">        Map&lt;String, Object&gt; body = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L52">        body.put(&quot;status&quot;, HttpStatus.BAD_REQUEST.value());</span>
+<span class="fc" id="L53">        body.put(&quot;error&quot;, &quot;Validation failed&quot;);</span>
+<span class="fc" id="L54">        body.put(&quot;details&quot;, details);</span>
+<span class="fc" id="L55">        return ResponseEntity.badRequest().body(body);</span>
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity&lt;?&gt; constraint(ConstraintViolationException ex) {
+<span class="fc" id="L60">        return error(HttpStatus.BAD_REQUEST, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity&lt;?&gt; dataIntegrity(DataIntegrityViolationException ex) {
+        // e.g., unique constraint on (race_id, driver_id)
+<span class="fc" id="L66">        return error(HttpStatus.CONFLICT, &quot;Driver already registered to this race&quot;);</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;?&gt; others(Exception ex) {
+        // Log full stack server-side; return safe message to client
+<span class="fc" id="L72">        ex.printStackTrace();</span>
+<span class="fc" id="L73">        return error(HttpStatus.INTERNAL_SERVER_ERROR, &quot;Internal error&quot;);</span>
+    }
+
+    private ResponseEntity&lt;Map&lt;String, Object&gt;&gt; error(HttpStatus status, String message) {
+<span class="fc" id="L77">        Map&lt;String, Object&gt; body = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L78">        body.put(&quot;status&quot;, status.value());</span>
+<span class="fc" id="L79">        body.put(&quot;error&quot;, message);</span>
+<span class="fc" id="L80">        return ResponseEntity.status(status).body(body);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

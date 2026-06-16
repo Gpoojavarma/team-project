@@ -1,0 +1,465 @@
+
+openapi: 3.0.3
+info:
+  title: Team Racing API
+  version: 1.0.0
+  description: >
+    API for Teams, Drivers, and Races.
+    Business constraints:
+      - Team logo ≤ 50KB; city & country mandatory
+      - Driver first/last name; dateOfBirth ≤ 2000-12-31; cannot delete if registered
+      - Race trackName unique; raceDate in future; registrationClosureDate (if provided) in past; cannot delete if any driver registered
+
+servers:
+  - url: http://localhost:8080
+
+tags:
+  - name: Teams
+  - name: Drivers
+  - name: Races
+
+paths:
+  ########################
+  # Teams
+  ########################
+  /api/teams:
+    post:
+      tags: [Teams]
+      summary: Create Team (multipart: JSON 'request' + binary 'logo' ≤ 50KB)
+      operationId: createTeam
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [request, logo]
+              properties:
+                request:
+                  $ref: '#/components/schemas/TeamCreateRequest'
+                logo:
+                  type: string
+                  format: binary
+            encoding:
+              request:
+                contentType: application/json
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '400': { description: Validation error }
+        '409': { description: Business rule violation (applies to delete endpoints) }
+
+    get:
+      tags: [Teams]
+      summary: List all teams
+      operationId: listTeams
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TeamResponse' }
+
+  /api/teams/{id}:
+    get:
+      tags: [Teams]
+      summary: Get team by id
+      operationId: getTeam
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TeamResponse' }
+        '404': { description: Not found }
+
+    put:
+      tags: [Teams]
+      summary: Update team details (JSON)
+      operationId: updateTeam
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TeamUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TeamResponse' }
+        '400': { description: Validation error }
+        '404': { description: Not found }
+
+    delete:
+      tags: [Teams]
+      summary: Delete team (blocked if any driver registered to any race)
+      operationId: deleteTeam
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not found }
+        '409': { description: Business rule violation - drivers registered to races }
+
+  /api/teams/{id}/logo:
+    put:
+      tags: [Teams]
+      summary: Update team logo (multipart 'logo' ≤ 50KB)
+      operationId: updateTeamLogo
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [logo]
+              properties:
+                logo:
+                  type: string
+                  format: binary
+      responses:
+        '204': { description: Logo updated }
+        '400': { description: Validation error }
+        '404': { description: Not found }
+
+  ########################
+  # Drivers
+  ########################
+  /api/drivers:
+    post:
+      tags: [Drivers]
+      summary: Create driver
+      operationId: createDriver
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverCreateRequest' }
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DriverResponse' }
+        '400': { description: Validation error }
+
+    get:
+      tags: [Drivers]
+      summary: List drivers
+      operationId: listDrivers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DriverResponse' }
+
+  /api/drivers/{id}:
+    get:
+      tags: [Drivers]
+      summary: Get driver by id
+      operationId: getDriver
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DriverResponse' }
+        '404': { description: Not found }
+
+    put:
+      tags: [Drivers]
+      summary: Update driver
+      operationId: updateDriver
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DriverResponse' }
+        '400': { description: Validation error }
+        '404': { description: Not found }
+
+    delete:
+      tags: [Drivers]
+      summary: Delete driver (blocked if registered)
+      operationId: deleteDriver
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not found }
+        '409': { description: Business rule violation - driver registered }
+
+  /api/drivers/{id}/team/{teamId}:
+    put:
+      tags: [Drivers]
+      summary: Assign driver to team
+      operationId: assignDriverTeam
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: teamId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: Driver assigned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DriverResponse' }
+        '404': { description: Driver or Team not found }
+
+  ########################
+  # Races
+  ########################
+  /api/races:
+    post:
+      tags: [Races]
+      summary: Create race
+      operationId: createRace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RaceCreateRequest' }
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RaceResponse' }
+        '400': { description: Validation error }
+
+    get:
+      tags: [Races]
+      summary: List races
+      operationId: listRaces
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RaceResponse' }
+
+  /api/races/{id}:
+    get:
+      tags: [Races]
+      summary: Get race by id
+      operationId: getRace
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RaceResponse' }
+        '404': { description: Not found }
+
+    put:
+      tags: [Races]
+      summary: Update race
+      operationId: updateRace
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RaceUpdateRequest' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RaceResponse' }
+        '400': { description: Validation error }
+        '404': { description: Not found }
+
+    delete:
+      tags: [Races]
+      summary: Delete race (blocked if any driver registered)
+      operationId: deleteRace
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not found }
+        '409': { description: Business rule violation - race registered }
+
+  /api/races/{raceId}/registrations/{driverId}:
+    post:
+      tags: [Races]
+      summary: Register driver to race
+      operationId: registerDriverToRace
+      parameters:
+        - name: raceId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: driverId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '201': { description: Registered }
+        '400': { description: Bad request (race/driver not found) }
+
+    delete:
+      tags: [Races]
+      summary: Unregister driver from race
+      operationId: unregisterDriverFromRace
+      parameters:
+        - name: raceId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: driverId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '204': { description: Unregistered }
+        '400': { description: Bad request (race/driver not found) }
+
+components:
+  parameters:
+    PathId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+
+  schemas:
+    ########################
+    # Team (DTOs)
+    ########################
+    TeamCreateRequest:
+      type: object
+      required: [teamName, city, country]
+      properties:
+        teamName:    { type: string, maxLength: 256, description: Unique team name }
+        city:        { type: string, maxLength: 128 }
+        country:     { type: string, maxLength: 128 }
+        description: { type: string, maxLength: 1024, nullable: true }
+
+    TeamUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/TeamCreateRequest'
+      description: "Update details; use /api/teams/{id}/logo for logo."
+
+    TeamResponse:
+      type: object
+      properties:
+        id:          { type: integer, format: int64 }
+        teamName:    { type: string, maxLength: 256 }
+        city:        { type: string, maxLength: 128 }
+        country:     { type: string, maxLength: 128 }
+        description: { type: string, maxLength: 1024, nullable: true }
+        logoPresent: { type: boolean, description: True if logo bytes exist }
+        driverIds:
+          type: array
+          items: { type: integer, format: int64 }
+      required: [id, teamName, city, country, logoPresent, driverIds]
+
+    ########################
+    # Driver (DTOs)
+    ########################
+    DriverCreateRequest:
+      type: object
+      required: [firstName, lastName, dateOfBirth]
+      properties:
+        firstName:   { type: string, maxLength: 96 }
+        lastName:    { type: string, maxLength: 96 }
+        dateOfBirth: { type: string, format: date, description: Must be ≤ 2000-12-31 }
+        teamId:      { type: integer, format: int64, nullable: true }
+
+    DriverUpdateRequest:
+      type: object
+      required: [firstName, lastName, dateOfBirth]
+      properties:
+        firstName:   { type: string, maxLength: 96 }
+        lastName:    { type: string, maxLength: 96 }
+        dateOfBirth: { type: string, format: date, description: Must be ≤ 2000-12-31 }
+        teamId:      { type: integer, format: int64, nullable: true }
+
+    DriverResponse:
+      type: object
+      properties:
+        id:          { type: integer, format: int64 }
+        firstName:   { type: string, maxLength: 96 }
+        lastName:    { type: string, maxLength: 96 }
+        dateOfBirth: { type: string, format: date }
+        teamId:      { type: integer, format: int64, nullable: true }
+        raceIds:
+          type: array
+          items: { type: integer, format: int64 }
+      required: [id, firstName, lastName, dateOfBirth]
+
+    ########################
+    # Race (DTOs)
+    ########################
+    RaceCreateRequest:
+      type: object
+      required: [trackName, city, country, raceDate]
+      properties:
+        trackName:               { type: string, maxLength: 256, description: Unique track name }
+        city:                    { type: string, maxLength: 128 }
+        country:                 { type: string, maxLength: 128 }
+        raceDate:                { type: string, format: date, description: Must be a future date (strictly > today) }
+        registrationClosureDate: { type: string, format: date, nullable: true, description: If provided, must be a past date (strictly < today) }
+
+    RaceUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/RaceCreateRequest'
+
+    RaceResponse:
+      type: object
+      properties:
+        id:                      { type: integer, format: int64 }
+        trackName:               { type: string, maxLength: 256 }
+        city:                    { type: string, maxLength: 128 }
+        country:                 { type: string, maxLength: 128 }
+        raceDate:                { type: string, format: date }
+        registrationClosureDate: { type: string, format: date, nullable: true }
+        registeredDriverIds:
+          type: array
+          items: { type: integer, format: int64 }
+      required      required: [id, trackName, city, country, raceDate]
+
+    ########################
+    # Common error
+    ########################
+    Error:
+      type: object
+      properties:

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RaceService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">race-demo</a> &gt; <a href="index.source.html" class="el_package">com.example.TeamAppDemo.Service</a> &gt; <span class="el_source">RaceService.java</span></div><h1>RaceService.java</h1><pre class="source lang-java linenums">
+package com.example.TeamAppDemo.Service;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.TeamAppDemo.DTO.RaceDtos;
+import com.example.TeamAppDemo.Entity.Driver;
+import com.example.TeamAppDemo.Entity.DriverRace;
+import com.example.TeamAppDemo.Entity.DriverRaceId;
+import com.example.TeamAppDemo.Entity.Race;
+import com.example.TeamAppDemo.Exception.BusinessRuleViolationException;
+import com.example.TeamAppDemo.Exception.ResourceNotFoundException;
+import com.example.TeamAppDemo.Repository.DriverRaceRepository;
+import com.example.TeamAppDemo.Repository.DriverRepository;
+import com.example.TeamAppDemo.Repository.RaceRepository;
+
+@Service
+@Transactional
+public class RaceService {
+    private final RaceRepository raceRepository;
+    private final DriverRepository driverRepository;
+    private final DriverRaceRepository driverRaceRepository;
+
+    public RaceService(RaceRepository raceRepository,
+                       DriverRepository driverRepository,
+<span class="fc" id="L30">                       DriverRaceRepository driverRaceRepository) {</span>
+<span class="fc" id="L31">        this.raceRepository = raceRepository;</span>
+<span class="fc" id="L32">        this.driverRepository = driverRepository;</span>
+<span class="fc" id="L33">        this.driverRaceRepository = driverRaceRepository;</span>
+<span class="fc" id="L34">    }</span>
+
+    // --------- Create / Update ---------
+
+    public Race create(RaceDtos.RaceCreateRequest req) {
+<span class="fc bfc" id="L39" title="All 2 branches covered.">        if (raceRepository.existsByTrackNameIgnoreCase(req.trackName)) {</span>
+<span class="fc" id="L40">            throw new BusinessRuleViolationException(&quot;Race track name must be unique&quot;);</span>
+        }
+
+<span class="fc" id="L43">        validateRaceDates(req.raceDate, req.registrationClosureDate, /*isCreate*/ true);</span>
+
+<span class="fc" id="L45">        Race r = new Race();</span>
+<span class="fc" id="L46">        r.setTrackName(req.trackName);</span>
+<span class="fc" id="L47">        r.setCity(req.city);</span>
+<span class="fc" id="L48">        r.setCountry(req.country);</span>
+<span class="fc" id="L49">        r.setRaceDate(req.raceDate);</span>
+<span class="fc" id="L50">        r.setRegistrationClosureDate(req.registrationClosureDate);</span>
+
+<span class="fc" id="L52">        return raceRepository.save(r);</span>
+    }
+
+    public Race update(Long id, RaceDtos.RaceUpdateRequest req) {
+<span class="fc" id="L56">        Race r = raceRepository.findById(id)</span>
+<span class="fc" id="L57">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Race not found: &quot; + id));</span>
+
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        if (!r.getTrackName().equalsIgnoreCase(req.trackName) &amp;&amp;</span>
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">            raceRepository.existsByTrackNameIgnoreCase(req.trackName)) {</span>
+<span class="nc" id="L61">            throw new BusinessRuleViolationException(&quot;Race track name must be unique&quot;);</span>
+        }
+
+<span class="fc" id="L64">        validateRaceDates(req.raceDate, req.registrationClosureDate, /*isCreate*/ false);</span>
+
+<span class="fc" id="L66">        r.setTrackName(req.trackName);</span>
+<span class="fc" id="L67">        r.setCity(req.city);</span>
+<span class="fc" id="L68">        r.setCountry(req.country);</span>
+<span class="fc" id="L69">        r.setRaceDate(req.raceDate);</span>
+<span class="fc" id="L70">        r.setRegistrationClosureDate(req.registrationClosureDate);</span>
+
+        // explicitly save for clarity and to ensure flush
+<span class="fc" id="L73">        return raceRepository.save(r);</span>
+    }
+
+    // --------- Queries ---------
+
+    public Race get(Long id) {
+<span class="fc" id="L79">        return raceRepository.findById(id)</span>
+<span class="fc" id="L80">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Race not found: &quot; + id));</span>
+    }
+
+    public List&lt;Race&gt; list() {
+<span class="fc" id="L84">        return raceRepository.findAll();</span>
+    }
+
+    // --------- Delete ---------
+
+    public void delete(Long id) {
+<span class="fc bfc" id="L90" title="All 2 branches covered.">        if (driverRaceRepository.countByRace_Id(id) &gt; 0) {</span>
+<span class="fc" id="L91">            throw new BusinessRuleViolationException(&quot;Cannot delete race: at least one driver registered&quot;);</span>
+        }
+<span class="fc" id="L93">        raceRepository.deleteById(id);</span>
+<span class="fc" id="L94">    }</span>
+
+    // --------- Registration ---------
+
+ 
+public void registerDriver(Long raceId, Long driverId) {
+<span class="fc" id="L100">    Race race = get(raceId);</span>
+
+<span class="fc" id="L102">    LocalDate today = LocalDate.now();</span>
+
+    // 1) Race date must be future
+<span class="fc bfc" id="L105" title="All 2 branches covered.">    if (!race.getRaceDate().isAfter(today)) {</span>
+<span class="fc" id="L106">        throw new BusinessRuleViolationException(&quot;Race date must be a future date.&quot;);</span>
+    }
+
+    // 2) Optional closure date: registration is closed when today &gt;= closure
+<span class="fc" id="L110">    LocalDate closure = race.getRegistrationClosureDate();</span>
+<span class="pc bpc" id="L111" title="3 of 6 branches missed.">    if (closure != null &amp;&amp; (today.isEqual(closure) || today.isAfter(closure))) {</span>
+        // today &gt;= closure date ⇒ closed
+<span class="fc" id="L113">        throw new BusinessRuleViolationException(&quot;Registration closed for this race.&quot;);</span>
+    }
+
+<span class="fc" id="L116">    Driver driver = driverRepository.findById(driverId)</span>
+<span class="fc" id="L117">            .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Driver not found: &quot; + driverId));</span>
+
+<span class="fc" id="L119">    DriverRaceId id = new DriverRaceId(driverId, raceId);</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">    if (driverRaceRepository.existsById(id)) {</span>
+<span class="fc" id="L121">        throw new BusinessRuleViolationException(&quot;Driver already registered to this race&quot;);</span>
+    }
+
+<span class="fc" id="L124">    DriverRace dr = new DriverRace(driver, race);</span>
+<span class="fc" id="L125">    driverRaceRepository.save(dr);</span>
+<span class="fc" id="L126">}</span>
+
+
+    public void unregisterDriver(Long raceId, Long driverId) {
+<span class="fc" id="L130">        DriverRaceId id = new DriverRaceId(driverId, raceId);</span>
+<span class="fc" id="L131">        DriverRace dr = driverRaceRepository.findById(id)</span>
+<span class="fc" id="L132">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Registration not found&quot;));</span>
+<span class="fc" id="L133">        driverRaceRepository.delete(dr);</span>
+<span class="fc" id="L134">    }</span>
+
+    // --------- Helpers / Validation ---------
+
+    /**
+     * Inclusive rule:
+     * Registration is OPEN through the closure date and CLOSED starting the day AFTER.
+     * CLOSED iff today &gt; closureDate.
+     * If closureDate is null, treat as OPEN.
+     */
+    public boolean isRegistrationClosed(LocalDate closureDate, LocalDate today) {
+<span class="fc bfc" id="L145" title="All 2 branches covered.">        if (closureDate == null) return false;</span>
+<span class="pc bpc" id="L146" title="1 of 2 branches missed.">        if (today == null) today = LocalDate.now();</span>
+<span class="fc" id="L147">        return today.isAfter(closureDate);</span>
+    }
+
+    /**
+     * Validates race and closure dates against business rules.
+     * - raceDate must be strictly in the future (matches @Future on the DTO).
+     * - closureDate must be on/before raceDate.
+     * - (Optional) For create, you may require closureDate to be today or later.
+     */
+    private void validateRaceDates(LocalDate raceDate, LocalDate closureDate, boolean isCreate) {
+<span class="fc" id="L157">        LocalDate today = LocalDate.now();</span>
+
+<span class="fc bfc" id="L159" title="All 2 branches covered.">        if (raceDate == null) {</span>
+<span class="fc" id="L160">            throw new BusinessRuleViolationException(&quot;Race date is mandatory.&quot;);</span>
+        }
+<span class="fc bfc" id="L162" title="All 2 branches covered.">        if (!raceDate.isAfter(today)) {</span>
+<span class="fc" id="L163">            throw new BusinessRuleViolationException(&quot;Race date must be in the future (after today).&quot;);</span>
+        }
+
+        // closureDate may be optional. If it's optional in your DTO, keep this null-allowing branch.
+<span class="pc bpc" id="L167" title="1 of 2 branches missed.">        if (closureDate == null) {</span>
+<span class="nc" id="L168">            return;</span>
+        }
+
+        // closure must be on or before race date
+<span class="fc bfc" id="L172" title="All 2 branches covered.">        if (closureDate.isAfter(raceDate)) {</span>
+<span class="fc" id="L173">            throw new BusinessRuleViolationException(&quot;Registration closure date must be on or before the race date.&quot;);</span>
+        }
+
+        // If you want to disallow setting past closures during CREATE (but allow during UPDATE), enable this:
+        // if (isCreate &amp;&amp; closureDate.isBefore(today)) {
+        //     throw new BusinessRuleViolationException(&quot;Registration closure date must be today or later.&quot;);
+        // }
+        //
+        // If you want to disallow past closures for both create and update, remove the isCreate condition:
+        // if (closureDate.isBefore(today)) {
+        //     throw new BusinessRuleViolationException(&quot;Registration closure date must be today or later.&quot;);
+        // }
+        //
+        // If you want to allow past closures always (e.g., backfilling data), leave as-is.
+<span class="fc" id="L187">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
