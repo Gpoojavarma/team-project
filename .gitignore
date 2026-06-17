@@ -1,0 +1,8 @@
+# Java backend
+**/target/
+*.jar
+*.db
+
+# frontend
+node_modules/
+.env
